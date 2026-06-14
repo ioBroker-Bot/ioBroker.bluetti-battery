@@ -83,7 +83,8 @@
 		"macAddress": "",
 		"deviceType": "auto",
 		"pollInterval": 10,
-		"pollPacks": false
+		"pollPacks": false,
+		"encryption": "auto"
 	},
 	"objects": [],
 	"instanceObjects": [

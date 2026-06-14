@@ -32,7 +32,8 @@
 				{ "label": "EP500", "value": "EP500" },
 				{ "label": "EP500P", "value": "EP500P" },
 				{ "label": "EP600", "value": "EP600" },
-				{ "label": "EB3A", "value": "EB3A" }
+				{ "label": "EB3A", "value": "EB3A" },
+				{ "label": "V2 / encrypted (experimental)", "value": "V2" }
 			],
 			"default": "auto",
 			"xs": 12,
@@ -60,6 +61,23 @@
 			"help": "Reads cell voltages and per-pack details (slower)",
 			"default": false,
 			"newLine": true,
+			"xs": 12,
+			"sm": 12,
+			"md": 6,
+			"lg": 4,
+			"xl": 4
+		},
+		"encryption": {
+			"type": "select",
+			"label": "Encryption (v2 devices)",
+			"help": "auto follows the device profile; force on/off for newer encrypted units",
+			"newLine": true,
+			"options": [
+				{ "label": "Auto", "value": "auto" },
+				{ "label": "On", "value": "on" },
+				{ "label": "Off", "value": "off" }
+			],
+			"default": "auto",
 			"xs": 12,
 			"sm": 12,
 			"md": 6,

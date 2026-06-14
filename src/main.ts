@@ -83,9 +83,31 @@ class BluettiBattery extends utils.Adapter {
         this.device = device;
         this.log.info(`Using device profile: ${device.type}`);
 
+        const encrypted = this.resolveEncryption(device);
+        try {
+            await this.client.beginSession(encrypted);
+        } catch (err) {
+            this.log.warn(`Session setup failed: ${(err as Error).message}. Retrying in 15s.`);
+            await this.client.disconnect().catch(() => undefined);
+            this.scheduleReconnect(mac, 15000);
+            return;
+        }
+
         await this.createObjects(device);
         await this.setState('info.connection', { val: true, ack: true });
         await this.poll();
+    }
+
+    /** Decide whether to use the encrypted v2 protocol (config override wins). */
+    private resolveEncryption(device: DeviceDefinition): boolean {
+        const mode = (this.config.encryption || 'auto').trim();
+        if (mode === 'on') {
+            return true;
+        }
+        if (mode === 'off') {
+            return false;
+        }
+        return !!device.encrypted;
     }
 
     private resolveDevice(name?: string): DeviceDefinition | undefined {
@@ -140,11 +162,13 @@ class BluettiBattery extends utils.Adapter {
         }
         this.polling = true;
         try {
+            const merged: Record<string, FieldValue> = {};
             for (const cmd of this.device.pollingCommands) {
                 const body = await this.client.perform(cmd);
-                const parsed = this.device.struct.parse(cmd.startingAddress, body);
-                await this.writeValues('', parsed);
+                Object.assign(merged, this.device.struct.parse(cmd.startingAddress, body));
             }
+            this.device.postParse?.(merged);
+            await this.writeValues('', merged);
 
             if (this.config.pollPacks && this.device.packPollingCommands.length) {
                 await this.pollPacks();
@@ -215,12 +239,13 @@ class BluettiBattery extends utils.Adapter {
      */
     private coveredNames(device: DeviceDefinition, cmds: ReadHoldingRegisters[]): Map<string, DeviceField> {
         const map = new Map<string, DeviceField>();
+        const bpa = device.struct.bytesPerAddress;
         for (const field of device.struct.fields) {
-            const covered = cmds.some(
-                c =>
-                    field.address >= c.startingAddress &&
-                    field.address + field.size - 1 <= c.startingAddress + c.quantity - 1,
-            );
+            const span = Math.ceil(field.byteLength / bpa);
+            const covered = cmds.some(c => {
+                const units = (c.quantity * 2) / bpa; // response is quantity*2 bytes
+                return field.address >= c.startingAddress && field.address + span - 1 <= c.startingAddress + units - 1;
+            });
             if (covered && !map.has(field.name)) {
                 map.set(field.name, field);
             }

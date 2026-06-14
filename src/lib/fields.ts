@@ -36,10 +36,15 @@ export abstract class DeviceField {
     enumMap?: EnumMap;
 
     constructor(
-        readonly name: string,
+        public name: string,
         readonly address: number,
         readonly size: number,
     ) {}
+
+    /** Number of bytes this field occupies in a response. */
+    get byteLength(): number {
+        return 2 * this.size;
+    }
 
     abstract parse(data: Buffer): FieldValue;
 
@@ -192,11 +197,72 @@ export class SerialNumberField extends DeviceField {
     }
 }
 
+// --- v2 (byte-addressed) field types ------------------------------------------
+
+/** Single unsigned byte. */
+export class Uint8Field extends DeviceField {
+    constructor(name: string, address: number) {
+        super(name, address, 1);
+    }
+    get byteLength(): number {
+        return 1;
+    }
+    parse(data: Buffer): number {
+        return data[0];
+    }
+}
+
+/** 32-bit unsigned, stored word-swapped (high word last) as Bluetti does. */
+export class Uint32Field extends DeviceField {
+    constructor(name: string, address: number) {
+        super(name, address, 2);
+    }
+    get byteLength(): number {
+        return 4;
+    }
+    parse(data: Buffer): number {
+        return ((data[2] << 24) | (data[3] << 16) | (data[0] << 8) | data[1]) >>> 0;
+    }
+}
+
+/** Word-swapped 32-bit value scaled by 10^-scale. */
+export class Decimal32Field extends DeviceField {
+    constructor(
+        name: string,
+        address: number,
+        readonly scale: number,
+    ) {
+        super(name, address, 2);
+    }
+    get byteLength(): number {
+        return 4;
+    }
+    parse(data: Buffer): number {
+        const raw = ((data[2] << 24) | (data[3] << 16) | (data[0] << 8) | data[1]) >>> 0;
+        return round(raw / 10 ** this.scale, this.scale);
+    }
+}
+
 export class DeviceStruct {
     readonly fields: DeviceField[] = [];
 
+    /**
+     * @param bytesPerAddress How many bytes one address unit spans. 2 for the
+     *   classic register-addressed devices, 1 for the byte-addressed v2 devices.
+     */
+    constructor(readonly bytesPerAddress: 1 | 2 = 2) {}
+
     addUint(name: string, address: number, range?: [number, number]): void {
         this.fields.push(new UintField(name, address, range));
+    }
+    addUint8(name: string, address: number): void {
+        this.fields.push(new Uint8Field(name, address));
+    }
+    addUint32(name: string, address: number): void {
+        this.fields.push(new Uint32Field(name, address));
+    }
+    addDecimal32(name: string, address: number, scale: number): void {
+        this.fields.push(new Decimal32Field(name, address, scale));
     }
     addBool(name: string, address: number): void {
         this.fields.push(new BoolField(name, address));
@@ -254,17 +320,18 @@ export class DeviceStruct {
      * @param data
      */
     parse(startingAddress: number, data: Buffer): Record<string, FieldValue> {
-        const dataSize = Math.floor(data.length / 2);
-        const end = startingAddress + dataSize;
+        const bpa = this.bytesPerAddress;
+        const end = startingAddress + Math.floor(data.length / bpa);
         const result: Record<string, FieldValue> = {};
 
         for (const f of this.fields) {
-            if (f.address < startingAddress || f.address + f.size - 1 >= end) {
+            const unitSpan = Math.ceil(f.byteLength / bpa);
+            if (f.address < startingAddress || f.address + unitSpan - 1 >= end) {
                 continue;
             }
-            const start = 2 * (f.address - startingAddress);
-            const fieldData = data.subarray(start, start + 2 * f.size);
-            if (fieldData.length < 2 * f.size) {
+            const start = bpa * (f.address - startingAddress);
+            const fieldData = data.subarray(start, start + f.byteLength);
+            if (fieldData.length < f.byteLength) {
                 continue;
             }
             const value = f.parse(fieldData);

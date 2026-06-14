@@ -1,5 +1,6 @@
 import { createBluetooth, type Adapter, type Bluetooth, type Device, type GattCharacteristic } from 'node-ble';
 import type { DeviceCommand } from './commands';
+import { type Connection, EncryptedConnection, PassthroughConnection } from './v2/connection';
 
 const SERVICE_UUID = '0000ff00-0000-1000-8000-00805f9b34fb';
 const WRITE_UUID = '0000ff02-0000-1000-8000-00805f9b34fb';
@@ -7,6 +8,7 @@ const NOTIFY_UUID = '0000ff01-0000-1000-8000-00805f9b34fb';
 
 const RESPONSE_TIMEOUT_MS = 5000;
 const CONNECT_TIMEOUT_MS = 30000;
+const HANDSHAKE_TIMEOUT_MS = 15000;
 const MAX_RETRIES = 5;
 const RETRY_DELAY_MS = 200;
 
@@ -36,6 +38,7 @@ export class BluetoothClient {
     private device?: Device;
     private writeChar?: GattCharacteristic;
     private notifyChar?: GattCharacteristic;
+    private connection?: Connection;
 
     private notifyBuffer = Buffer.alloc(0);
     private pending?: PendingCommand;
@@ -53,7 +56,7 @@ export class BluetoothClient {
     ) {}
 
     get connected(): boolean {
-        return !!this.device && !!this.writeChar && !!this.notifyChar && !this.closed;
+        return !!this.device && !!this.writeChar && !!this.notifyChar && !!this.connection && !this.closed;
     }
 
     async connect(): Promise<void> {
@@ -83,9 +86,39 @@ export class BluetoothClient {
         const service = await gatt.getPrimaryService(SERVICE_UUID);
         this.writeChar = await service.getCharacteristic(WRITE_UUID);
         this.notifyChar = await service.getCharacteristic(NOTIFY_UUID);
+    }
+
+    /**
+     * Start receiving notifications and, for v2 devices, run the encryption
+     * handshake. Must be called after {@link connect} and before {@link perform}.
+     *
+     * @param encrypted
+     */
+    async beginSession(encrypted: boolean): Promise<void> {
+        if (!this.writeChar || !this.notifyChar) {
+            throw new Error('not connected');
+        }
+        const writeRaw = (buffer: Buffer): Promise<void> => this.writeChar!.writeValue(buffer, { type: 'command' });
+        const onPlaintext = (buffer: Buffer): void => this.handlePlaintext(buffer);
+        this.connection = encrypted
+            ? new EncryptedConnection(onPlaintext, writeRaw)
+            : new PassthroughConnection(onPlaintext, writeRaw);
 
         await this.notifyChar.startNotifications();
-        this.notifyChar.on('valuechanged', (data: Buffer) => this.handleNotification(data));
+        this.notifyChar.on('valuechanged', (data: Buffer) => {
+            void this.connection?.onPacket(data).catch((err: Error) => this.log.debug(`packet error: ${err.message}`));
+        });
+
+        if (encrypted) {
+            this.log.info('Performing encrypted handshake...');
+            await Promise.race([
+                this.connection.waitUntilReady(),
+                delay(HANDSHAKE_TIMEOUT_MS).then(() => {
+                    throw new Error('encryption handshake timed out');
+                }),
+            ]);
+            this.log.info('Encrypted handshake complete');
+        }
     }
 
     /**
@@ -139,7 +172,7 @@ export class BluetoothClient {
     /** A single request/response round-trip. */
     private singleAttempt(command: DeviceCommand): Promise<Buffer> {
         return new Promise<Buffer>((resolve, reject) => {
-            if (!this.writeChar) {
+            if (!this.writeChar || !this.connection) {
                 reject(new Error('not connected'));
                 return;
             }
@@ -152,8 +185,9 @@ export class BluetoothClient {
             }, RESPONSE_TIMEOUT_MS);
             this.pending = { command, resolve, reject, timer };
 
-            // Bluetti expects write-without-response on ff02.
-            this.writeChar.writeValue(command.frame, { type: 'command' }).catch((err: Error) => {
+            // Bluetti expects write-without-response on ff02; the connection layer
+            // encrypts the frame first for v2 devices.
+            this.connection.write(command.frame).catch((err: Error) => {
                 if (this.pending?.timer === timer) {
                     clearTimeout(timer);
                     this.pending = undefined;
@@ -187,6 +221,7 @@ export class BluetoothClient {
         }
         this.writeChar = undefined;
         this.notifyChar = undefined;
+        this.connection = undefined;
         this.device = undefined;
     }
 
@@ -218,7 +253,8 @@ export class BluetoothClient {
         pending.reject(err);
     }
 
-    private handleNotification(data: Buffer): void {
+    /** Handle a complete (decrypted) plaintext chunk from the connection layer. */
+    private handlePlaintext(data: Buffer): void {
         const pending = this.pending;
         if (!pending) {
             return;
@@ -256,6 +292,7 @@ export class BluetoothClient {
         this.log.warn(`Device ${this.address} disconnected`);
         this.writeChar = undefined;
         this.notifyChar = undefined;
+        this.connection = undefined;
         this.rejectPending(new Error('device disconnected'));
         this.onDisconnect();
     }

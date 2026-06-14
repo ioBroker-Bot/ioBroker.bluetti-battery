@@ -12,6 +12,8 @@ declare global {
             pollInterval: number;
             /** Whether to poll per-pack battery data (cell voltages etc.). */
             pollPacks: boolean;
+            /** Encrypted v2 protocol: "auto" (per device profile), "on" or "off". */
+            encryption: string;
         }
     }
 }

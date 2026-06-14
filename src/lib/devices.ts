@@ -3,7 +3,8 @@
  * Ported from bluetti_mqtt/core/devices/*.py.
  */
 import { ReadHoldingRegisters } from './commands';
-import { DeviceStruct, type EnumMap } from './fields';
+import { DeviceStruct, type EnumMap, type FieldValue } from './fields';
+import { buildV2Device } from './v2/v2device';
 
 // --- Shared enums (value -> name) ---------------------------------------------
 
@@ -32,6 +33,10 @@ export interface DeviceDefinition {
     pollingCommands: ReadHoldingRegisters[];
     /** Commands run once per pack (after selecting the pack via register 3006). */
     packPollingCommands: ReadHoldingRegisters[];
+    /** True for v2 devices that require the encrypted BLE handshake. */
+    encrypted?: boolean;
+    /** Optional hook to derive virtual fields after parsing (e.g. v2 bitfields). */
+    postParse?: (parsed: Record<string, FieldValue>) => void;
 }
 
 type Builder = () => DeviceDefinition;
@@ -449,6 +454,7 @@ const BUILDERS: Record<string, Builder> = {
     AC70: () => buildAc70Style('AC70'),
     AC2A: () => buildAc70Style('AC2A'),
     AC240: () => buildAcEp({ type: 'AC240', packNumMax: 6, gridChargeCurrent: true }),
+    V2: buildV2Device,
 };
 
 /** Supported device types (canonical builder keys). */

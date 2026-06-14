@@ -23,9 +23,18 @@ into ioBroker so no extra Python service or MQTT broker is required.
 `EP600`, `EB3A`.
 
 Experimental (register maps ported from community forks, not verified on real
-hardware): `AC180`, `AC2A`, `AC70`.
+hardware): `AC180`, `AC2A`, `AC70`, and `V2` (the encrypted protocol used by
+newer firmware/models).
 
 One adapter instance talks to one device.
+
+### Encrypted (v2) devices
+
+Newer Bluetti units use an encrypted BLE handshake (AES-CBC + ECDH). Select the
+`V2` device type, or set **Encryption** to `on`, to enable it. This support is a
+port of the [nhurman fork](https://github.com/nhurman/bluetti_mqtt) and is
+**experimental**: the crypto primitives are unit-tested, but the full handshake
+has not been verified against real hardware. Feedback welcome.
 
 ### Requirements
 
