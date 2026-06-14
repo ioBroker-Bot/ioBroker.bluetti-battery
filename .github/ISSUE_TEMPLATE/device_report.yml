@@ -1,0 +1,107 @@
+name: Device report / compatibility
+description: Report whether your Bluetti device works (or doesn't) with the adapter
+title: "[Device]: "
+labels: ["device-report"]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        **Thanks for helping test the adapter!**
+
+
+        Use this to report how a specific Bluetti device behaves - what works,
+        what is missing, or what shows wrong values. This is especially helpful
+        for the experimental device profiles and for models not yet listed.
+
+  - type: input
+    id: model
+    attributes:
+      label: Device model
+      description: The exact model as printed on the device / shown in the Bluetti app.
+      placeholder: e.g., AC300, AC180, EP600
+    validations:
+      required: true
+
+  - type: input
+    id: advertised-name
+    attributes:
+      label: Advertised Bluetooth name
+      description: The BLE name the device advertises (usually model + serial).
+      placeholder: e.g., AC3001234567890123
+    validations:
+      required: false
+
+  - type: dropdown
+    id: profile
+    attributes:
+      label: Device profile used
+      description: From the log line `Using device profile: ...`.
+      options:
+        - AC200M
+        - AC200L
+        - AC300
+        - AC500
+        - AC240
+        - AC60
+        - AC70
+        - AC180
+        - AC2A
+        - EP500
+        - EP500P
+        - EP600
+        - EB3A
+        - V2 (encrypted)
+        - Auto-detect failed / unknown
+    validations:
+      required: true
+
+  - type: dropdown
+    id: status
+    attributes:
+      label: Overall status
+      options:
+        - Works fully
+        - Works with wrong/missing values
+        - Connects but no data
+        - Does not connect
+    validations:
+      required: true
+
+  - type: textarea
+    id: working
+    attributes:
+      label: What works
+      description: Which values / controls are correct?
+    validations:
+      required: false
+
+  - type: textarea
+    id: broken
+    attributes:
+      label: What is wrong or missing
+      description: |
+        List states that are wrong or missing. For wrong values, give the value
+        the adapter shows AND the value shown in the Bluetti app, so scaling can
+        be checked.
+      placeholder: |
+        e.g. pack_voltage shows 5.12 but app shows 51.2 (factor 10 off)
+    validations:
+      required: false
+
+  - type: input
+    id: adapter-version
+    attributes:
+      label: Adapter version
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log lines (debug level)
+      description: |
+        Please enable debug logging and include the startup lines, especially
+        `Using device profile: ...`, any `MODBUS exception` / `rejected`
+        warnings, and the encrypted handshake lines for v2 devices.
+    validations:
+      required: false

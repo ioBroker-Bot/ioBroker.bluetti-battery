@@ -19,14 +19,29 @@ into ioBroker so no extra Python service or MQTT broker is required.
 
 ### Supported devices
 
-`AC200M`, `AC200L`, `AC300`, `AC500`, `AC240`, `AC60`, `EP500`, `EP500P`,
-`EP600`, `EB3A`.
-
-Experimental (register maps ported from community forks, not verified on real
-hardware): `AC180`, `AC2A`, `AC70`, and `V2` (the encrypted protocol used by
-newer firmware/models).
-
 One adapter instance talks to one device.
+
+| Status | Devices |
+|--------|---------|
+| ✅ Confirmed on real hardware | `AC300`, `AC500` (incl. pack polling and controls) |
+| ⚙️ Ported, needs a tester | `AC200M`, `AC200L`, `AC240`, `AC60`, `EP500`, `EP500P`, `EP600`, `EB3A` |
+| 🧪 Experimental (fork maps / unverified) | `AC180`, `AC2A`, `AC70`, `V2` (encrypted) |
+
+If your device is in the "needs a tester" or "experimental" row, please report
+how it behaves — see [Testing & reporting](#testing--reporting).
+
+### Testing & reporting
+
+This adapter is young and most device profiles have not been verified on real
+hardware. Reports are very welcome. Please open a
+[Device report](../../issues/new?template=device_report.yml) issue with:
+
+- your device model and the log line `Using device profile: ...`,
+- which values/controls are correct, and which are wrong or missing,
+- for wrong values, the value the adapter shows **and** the value in the Bluetti
+  app (so scaling can be checked),
+- debug-level logs (especially `MODBUS exception` / `rejected` warnings, and the
+  handshake lines for encrypted `V2` devices).
 
 ### Encrypted (v2) devices
 
