@@ -321,12 +321,19 @@ class BluettiBattery extends utils.Adapter {
         const common: ioBroker.StateCommon = {
             name: field.name.replace(/_/g, ' '),
             type: meta.type,
-            role: meta.role,
+            role: field.role ?? meta.role,
             read: true,
             write: writable,
         };
-        if (meta.unit) {
-            common.unit = meta.unit;
+        const unit = field.unit ?? meta.unit;
+        if (unit) {
+            common.unit = unit;
+        }
+        if (field.min !== undefined) {
+            common.min = field.min;
+        }
+        if (field.max !== undefined) {
+            common.max = field.max;
         }
         if (field.enumMap) {
             common.states = { ...field.enumMap };
@@ -510,10 +517,10 @@ function stateMeta(field: DeviceField, writable: boolean): StateMeta {
         return { type: 'number', role: 'value.power', unit: 'W' };
     }
     if (name.includes('voltage')) {
-        return { type: 'number', role: 'value.voltage', unit: 'V' };
+        return { type: 'number', role: writable ? 'level.voltage' : 'value.voltage', unit: 'V' };
     }
     if (name.includes('current')) {
-        return { type: 'number', role: 'value.current', unit: 'A' };
+        return { type: 'number', role: writable ? 'level.current' : 'value.current', unit: 'A' };
     }
     if (name.includes('frequency')) {
         return { type: 'number', role: 'value', unit: 'Hz' };

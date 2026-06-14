@@ -173,6 +173,11 @@ const buildAcEp = (opts: AcEpOptions): DeviceDefinition => {
     s.addUint('battery_range_end', 3016);
     if (opts.gridChargeCurrent) {
         s.addUint('max_grid_charge_current', 3019);
+        const f = s.fields[s.fields.length - 1];
+        f.min = 1;
+        f.max = 10; // 10 A in non-pro mode (app limit)
+        f.unit = 'A';
+        f.role = 'level.current';
     }
     s.addBool('bluetooth_connected', 3036);
     s.addEnum('auto_sleep_mode', 3061, AutoSleepMode);
@@ -443,11 +448,11 @@ const buildAc70Style = (type: string): DeviceDefinition => {
 
 const BUILDERS: Record<string, Builder> = {
     AC200M: buildAC200M,
-    AC300: () => buildAcEp({ type: 'AC300', packNumMax: 4, ac300Extras: true }),
-    AC500: () => buildAcEp({ type: 'AC500', packNumMax: 6 }),
+    AC300: () => buildAcEp({ type: 'AC300', packNumMax: 4, ac300Extras: true, gridChargeCurrent: true }),
+    AC500: () => buildAcEp({ type: 'AC500', packNumMax: 6, gridChargeCurrent: true }),
     AC60: () => buildAc60Ep600({ type: 'AC60', extended: false }),
-    EP500: () => buildAcEp({ type: 'EP500', packNumMax: 1, ep500Battery: true }),
-    EP500P: () => buildAcEp({ type: 'EP500P', packNumMax: 1, ep500Battery: true }),
+    EP500: () => buildAcEp({ type: 'EP500', packNumMax: 1, ep500Battery: true, gridChargeCurrent: true }),
+    EP500P: () => buildAcEp({ type: 'EP500P', packNumMax: 1, ep500Battery: true, gridChargeCurrent: true }),
     EP600: () => buildAc60Ep600({ type: 'EP600', extended: true }),
     EB3A: buildEB3A,
     AC200L: buildAC200L,

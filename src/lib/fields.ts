@@ -34,6 +34,11 @@ export abstract class DeviceField {
     writable = false;
     /** Optional enum value->name map, used to build the ioBroker state's `states`. */
     enumMap?: EnumMap;
+    /** Optional ioBroker state metadata overrides. */
+    min?: number;
+    max?: number;
+    unit?: string;
+    role?: string;
 
     constructor(
         public name: string,
