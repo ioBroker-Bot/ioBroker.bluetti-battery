@@ -1,0 +1,2 @@
+# ioBroker.bluetti-battery
+ 
