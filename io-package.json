@@ -1,0 +1,88 @@
+{
+	"common": {
+		"name": "bluetti-battery",
+		"version": "0.0.1",
+		"news": {
+			"0.0.1": {
+				"en": "initial release",
+				"de": "Erstveröffentlichung",
+				"ru": "Начальная версия",
+				"pt": "lançamento inicial",
+				"nl": "Eerste uitgave",
+				"fr": "Première version",
+				"it": "Versione iniziale",
+				"es": "Versión inicial",
+				"pl": "Pierwsze wydanie",
+				"uk": "Початкова версія",
+				"zh-cn": "首次出版"
+			}
+		},
+		"titleLang": {
+			"en": "bluetti battery control",
+			"de": "Bluetti Batteriesteuerung",
+			"ru": "контроль заряда батареи bluetti",
+			"pt": "controle de bateria bluetti",
+			"nl": "bluetti batterijcontrole",
+			"fr": "contrôle de batterie bluetti",
+			"it": "controllo batteria bluetti",
+			"es": "control de bateria bluetti",
+			"pl": "kontrola baterii bluetti",
+			"uk": "контроль батареї bluetti",
+			"zh-cn": "bluetti电池控制"
+		},
+		"desc": {
+			"en": "bluetti",
+			"de": "Bluetti",
+			"ru": "Блютти",
+			"pt": "azul",
+			"nl": "Bluetti",
+			"fr": "bleutti",
+			"it": "bluetti",
+			"es": "blueti",
+			"pl": "błękitny",
+			"uk": "bluetti",
+			"zh-cn": "布鲁蒂"
+		},
+		"authors": [
+			"Garfonso <garfonso@mobo.info>"
+		],
+		"keywords": [
+			"battery ble energy"
+		],
+		"licenseInformation": {
+			"type": "free",
+			"license": "MIT"
+		},
+		"platform": "Javascript/Node.js",
+		"icon": "bluetti-battery.png",
+		"enabled": true,
+		"extIcon": "https://raw.githubusercontent.com/Garfonso/ioBroker.bluetti-battery/main/admin/bluetti-battery.png",
+		"readme": "https://github.com/Garfonso/ioBroker.bluetti-battery/blob/main/README.md",
+		"loglevel": "info",
+		"tier": 3,
+		"mode": "daemon",
+		"type": "energy",
+		"compact": true,
+		"connectionType": "local",
+		"dataSource": "poll",
+		"adminUI": {
+			"config": "json"
+		},
+		"dependencies": [
+			{
+				"js-controller": ">=6.0.11"
+			}
+		],
+		"globalDependencies": [
+			{
+				"admin": ">=7.0.23"
+			}
+		]
+	},
+	"native": {
+		"option1": true,
+		"option2": "42"
+	},
+	"objects": [],
+	"instanceObjects": []
+}

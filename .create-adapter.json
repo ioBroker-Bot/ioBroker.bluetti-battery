@@ -1,0 +1,36 @@
+{
+	"cli": true,
+	"target": "directory",
+	"adapterName": "bluetti-battery",
+	"title": "bluetti battery control",
+	"description": "bluetti",
+	"keywords": [
+		"battery ble energy"
+	],
+	"expert": "no",
+	"features": [
+		"adapter"
+	],
+	"adminFeatures": [],
+	"type": "energy",
+	"startMode": "daemon",
+	"connectionType": "local",
+	"dataSource": "poll",
+	"connectionIndicator": "no",
+	"language": "TypeScript (without build)",
+	"nodeVersion": "20",
+	"adminUi": "json",
+	"releaseScript": "yes",
+	"devServer": "global",
+	"indentation": "Tab",
+	"quotes": "single",
+	"authorName": "Garfonso",
+	"authorGithub": "Garfonso",
+	"authorEmail": "garfonso@mobo.info",
+	"gitRemoteProtocol": "HTTPS",
+	"gitCommit": "no",
+	"defaultBranch": "main",
+	"license": "MIT License",
+	"dependabot": "yes",
+	"creatorVersion": "3.1.5"
+}
