@@ -92,6 +92,7 @@ setting before it gets a named state.
 -->
 
 ### **WORK IN PROGRESS**
+* (Garfonso/Claude) add support for reverse engineering modbus registers via sendTo commands
 * (Garfonso/Claude) make modbus polling more robust.
 * (Garfonso/Claude) add experimental support for encrypted (v2) devices
 * (Garfonso/Claude) initial release
