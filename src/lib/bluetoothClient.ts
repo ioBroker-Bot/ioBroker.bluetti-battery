@@ -283,7 +283,7 @@ export class BluetoothClient {
             }
         } else if (cmd.isExceptionResponse(this.notifyBuffer)) {
             // The device rejected the request itself - don't retry.
-            this.rejectPending(new Error(`MODBUS exception ${this.notifyBuffer[2]}`));
+            this.rejectPending(new ModbusError(this.notifyBuffer[2]));
         }
     }
 
@@ -302,6 +302,14 @@ export class BluetoothClient {
 
 interface RetryError extends Error {
     retryable?: boolean;
+}
+
+/** The device returned a MODBUS exception response for a command. */
+export class ModbusError extends Error {
+    constructor(readonly code: number) {
+        super(`MODBUS exception ${code}`);
+        this.name = 'ModbusError';
+    }
 }
 
 /** Tag an error as safe to retry. */

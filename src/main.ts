@@ -7,7 +7,7 @@ import type { ReadHoldingRegisters } from './lib/commands';
 import { WriteSingleRegister } from './lib/commands';
 import { BoolField, EnumField, SerialNumberField, StringField, SwapStringField, VersionField } from './lib/fields';
 import type { DeviceField, FieldValue } from './lib/fields';
-import { BluetoothClient } from './lib/bluetoothClient';
+import { BluetoothClient, ModbusError } from './lib/bluetoothClient';
 import { buildDevice, detectFromName, SUPPORTED_TYPES } from './lib/devices';
 import type { DeviceDefinition } from './lib/devices';
 
@@ -21,6 +21,8 @@ class BluettiBattery extends utils.Adapter {
     private reconnectTimer?: ReturnType<typeof setTimeout>;
     private polling = false;
     private stopping = false;
+    /** Register start addresses already warned about (avoid log spam). */
+    private readonly modbusWarned = new Set<number>();
 
     public constructor(options: Partial<utils.AdapterOptions> = {}) {
         super({ ...options, name: 'bluetti-battery' });
@@ -157,8 +159,24 @@ class BluettiBattery extends utils.Adapter {
         try {
             const merged: Record<string, FieldValue> = {};
             for (const cmd of this.device.pollingCommands) {
-                const body = await this.client.perform(cmd);
-                Object.assign(merged, this.device.struct.parse(cmd.startingAddress, body));
+                try {
+                    const body = await this.client.perform(cmd);
+                    Object.assign(merged, this.device.struct.parse(cmd.startingAddress, body));
+                } catch (err) {
+                    if (err instanceof ModbusError) {
+                        // The device does not support this register range - skip it
+                        // and keep polling the rest. Warn once per range, then quietly.
+                        const msg = `Device rejected registers ${cmd.startingAddress}+${cmd.quantity} (MODBUS exception ${err.code}); skipping this range`;
+                        if (this.modbusWarned.has(cmd.startingAddress)) {
+                            this.log.debug(msg);
+                        } else {
+                            this.modbusWarned.add(cmd.startingAddress);
+                            this.log.warn(msg);
+                        }
+                        continue;
+                    }
+                    throw err;
+                }
             }
             this.device.postParse?.(merged);
             await this.writeValues('', merged);
