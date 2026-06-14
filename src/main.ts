@@ -13,6 +13,12 @@ import type { DeviceDefinition } from './lib/devices';
 
 const MAC_RE = /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/i;
 const PACK_SELECT_REGISTER = 3006;
+/** Time to wait after switching packs before the new pack data is readable. */
+const PACK_SWITCH_DELAY_MS = 3000;
+
+function delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 class BluettiBattery extends utils.Adapter {
     private client?: BluetoothClient;
@@ -204,23 +210,49 @@ class BluettiBattery extends utils.Adapter {
         if (!this.client || !this.device) {
             return;
         }
+        const written = new Set<number>();
         for (let pack = 1; pack <= this.device.packNumMax; pack++) {
             try {
-                // Select the pack, then read its block. Not-connected packs make
-                // the device reject the request - skip them quietly.
-                await this.client.perform(new WriteSingleRegister(PACK_SELECT_REGISTER, pack));
+                // Select the pack. The device replies with MODBUS exception 5
+                // ("acknowledge" - accepted, needs time), which is expected and
+                // not a failure. Then wait for the pack data to switch.
+                if (this.device.packNumMax > 1) {
+                    await this.selectPack(pack);
+                    await delay(PACK_SWITCH_DELAY_MS);
+                }
+
                 const parsed: Record<string, FieldValue> = {};
                 for (const cmd of this.device.packPollingCommands) {
                     const body = await this.client.perform(cmd);
                     Object.assign(parsed, this.device.struct.parse(cmd.startingAddress, body));
                 }
-                await this.ensurePackObjects(pack);
-                await this.writeValues(`packs.${pack}.`, parsed);
-            } catch (err) {
-                if (err instanceof ModbusError) {
-                    this.log.debug(`Pack ${pack} not available (MODBUS exception ${err.code})`);
+
+                // Label by the pack number the device actually reported, so a
+                // single pack in any slot lands in the right channel.
+                const idx = typeof parsed.pack_num === 'number' && parsed.pack_num > 0 ? parsed.pack_num : pack;
+                if (written.has(idx)) {
                     continue;
                 }
+                written.add(idx);
+                await this.ensurePackObjects(idx);
+                await this.writeValues(`packs.${idx}.`, parsed);
+            } catch (err) {
+                if (err instanceof ModbusError) {
+                    this.log.debug(`Pack ${pack} read rejected (MODBUS exception ${err.code})`);
+                    continue;
+                }
+                throw err;
+            }
+        }
+    }
+
+    /** Select a pack for reading, tolerating the "acknowledge" exception. */
+    private async selectPack(pack: number): Promise<void> {
+        try {
+            await this.client!.perform(new WriteSingleRegister(PACK_SELECT_REGISTER, pack));
+        } catch (err) {
+            // Exception 5 (acknowledge) is the normal response to a pack switch.
+            if (!(err instanceof ModbusError)) {
                 throw err;
             }
         }
