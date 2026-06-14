@@ -7,6 +7,8 @@ const NOTIFY_UUID = '0000ff01-0000-1000-8000-00805f9b34fb';
 
 const RESPONSE_TIMEOUT_MS = 5000;
 const CONNECT_TIMEOUT_MS = 30000;
+const MAX_RETRIES = 5;
+const RETRY_DELAY_MS = 200;
 
 export interface ClientLogger {
     debug(msg: string): void;
@@ -87,7 +89,9 @@ export class BluetoothClient {
     }
 
     /**
-     * Queue a command and resolve with its parsed response body.
+     * Queue a command and resolve with its parsed response body. Commands are
+     * serialized (one in flight at a time) and retried on timeout / checksum
+     * failure, mirroring the original bluetti_mqtt client.
      *
      * @param command
      */
@@ -97,23 +101,65 @@ export class BluetoothClient {
                 reject(new Error('client closed'));
                 return;
             }
-            const task = (): void => {
-                if (!this.writeChar) {
-                    this.busy = false;
-                    reject(new Error('not connected'));
-                    return;
+            const task = async (): Promise<void> => {
+                try {
+                    resolve(await this.attemptWithRetries(command));
+                } catch (err) {
+                    reject(err instanceof Error ? err : new Error(String(err)));
+                } finally {
+                    this.settlePending();
                 }
-                this.notifyBuffer = Buffer.alloc(0);
-                const timer = setTimeout(() => this.failPending(new Error('response timeout')), RESPONSE_TIMEOUT_MS);
-                this.pending = { command, resolve, reject, timer };
-
-                // Bluetti expects write-without-response on ff02.
-                this.writeChar.writeValue(command.frame, { type: 'command' }).catch((err: Error) => {
-                    this.failPending(err);
-                });
             };
             this.queue.push(task);
             this.runNext();
+        });
+    }
+
+    /** Run a single command, retrying transient failures up to MAX_RETRIES. */
+    private async attemptWithRetries(command: DeviceCommand): Promise<Buffer> {
+        let lastError: RetryError = new Error('command failed');
+        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+            if (this.closed || !this.writeChar) {
+                throw new Error('not connected');
+            }
+            try {
+                return await this.singleAttempt(command);
+            } catch (err) {
+                lastError = err as RetryError;
+                if (!lastError.retryable) {
+                    throw lastError;
+                }
+                this.log.debug(`Command failed (${lastError.message}), retry ${attempt + 1}/${MAX_RETRIES}`);
+                await delay(RETRY_DELAY_MS);
+            }
+        }
+        throw lastError;
+    }
+
+    /** A single request/response round-trip. */
+    private singleAttempt(command: DeviceCommand): Promise<Buffer> {
+        return new Promise<Buffer>((resolve, reject) => {
+            if (!this.writeChar) {
+                reject(new Error('not connected'));
+                return;
+            }
+            this.notifyBuffer = Buffer.alloc(0);
+            const timer = setTimeout(() => {
+                if (this.pending?.timer === timer) {
+                    this.pending = undefined;
+                }
+                reject(retryable(new Error('response timeout')));
+            }, RESPONSE_TIMEOUT_MS);
+            this.pending = { command, resolve, reject, timer };
+
+            // Bluetti expects write-without-response on ff02.
+            this.writeChar.writeValue(command.frame, { type: 'command' }).catch((err: Error) => {
+                if (this.pending?.timer === timer) {
+                    clearTimeout(timer);
+                    this.pending = undefined;
+                }
+                reject(err);
+            });
         });
     }
 
@@ -153,7 +199,7 @@ export class BluetoothClient {
             return;
         }
         this.busy = true;
-        task();
+        void task();
     }
 
     private settlePending(): void {
@@ -161,7 +207,8 @@ export class BluetoothClient {
         this.runNext();
     }
 
-    private failPending(err: Error): void {
+    /** Reject the in-flight attempt, clearing its timer. */
+    private rejectPending(err: Error): void {
         const pending = this.pending;
         if (!pending) {
             return;
@@ -169,7 +216,6 @@ export class BluetoothClient {
         clearTimeout(pending.timer);
         this.pending = undefined;
         pending.reject(err);
-        this.settlePending();
     }
 
     private handleNotification(data: Buffer): void {
@@ -181,7 +227,7 @@ export class BluetoothClient {
         // Garbage that some firmware emits when the connection is unhappy.
         const text = data.toString('latin1');
         if (text === 'AT+NAME?\r' || text === 'AT+ADV?\r') {
-            this.failPending(new Error('got AT+ notification (bad connection)'));
+            this.rejectPending(new Error('got AT+ notification (bad connection)'));
             return;
         }
 
@@ -193,12 +239,13 @@ export class BluetoothClient {
                 clearTimeout(pending.timer);
                 this.pending = undefined;
                 pending.resolve(cmd.parseResponse(this.notifyBuffer));
-                this.settlePending();
             } else {
-                this.failPending(new Error('checksum failed'));
+                // Corrupt frame - retryable.
+                this.rejectPending(retryable(new Error('checksum failed')));
             }
         } else if (cmd.isExceptionResponse(this.notifyBuffer)) {
-            this.failPending(new Error(`MODBUS exception ${this.notifyBuffer[2]}`));
+            // The device rejected the request itself - don't retry.
+            this.rejectPending(new Error(`MODBUS exception ${this.notifyBuffer[2]}`));
         }
     }
 
@@ -209,9 +256,21 @@ export class BluetoothClient {
         this.log.warn(`Device ${this.address} disconnected`);
         this.writeChar = undefined;
         this.notifyChar = undefined;
-        if (this.pending) {
-            this.failPending(new Error('device disconnected'));
-        }
+        this.rejectPending(new Error('device disconnected'));
         this.onDisconnect();
     }
+}
+
+interface RetryError extends Error {
+    retryable?: boolean;
+}
+
+/** Tag an error as safe to retry. */
+function retryable(err: Error): RetryError {
+    (err as RetryError).retryable = true;
+    return err;
+}
+
+function delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }

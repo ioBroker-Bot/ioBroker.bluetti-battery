@@ -11,6 +11,7 @@ export default [
 			// Code is TypeScript - types already document signatures. Don't force
 			// JSDoc on every member.
 			'jsdoc/require-jsdoc': 'off',
+			'jsdoc/require-param': 'off',
 			'jsdoc/require-param-description': 'off',
 			'jsdoc/require-returns-description': 'off',
 		},
