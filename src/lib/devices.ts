@@ -98,6 +98,8 @@ interface AcEpOptions {
     ep500Battery?: boolean;
     /** AC300 has a few extra detail registers. */
     ac300Extras?: boolean;
+    /** AC240 adds a writable max grid charge current register. */
+    gridChargeCurrent?: boolean;
 }
 
 const buildAcEp = (opts: AcEpOptions): DeviceDefinition => {
@@ -163,6 +165,9 @@ const buildAcEp = (opts: AcEpOptions): DeviceDefinition => {
     s.addBool('time_control_on', 3013);
     s.addUint('battery_range_start', 3015);
     s.addUint('battery_range_end', 3016);
+    if (opts.gridChargeCurrent) {
+        s.addUint('max_grid_charge_current', 3019);
+    }
     s.addBool('bluetooth_connected', 3036);
     s.addEnum('auto_sleep_mode', 3061, AutoSleepMode);
 
@@ -265,6 +270,169 @@ const buildEB3A: Builder = () => {
     };
 };
 
+// --- AC200L (ported from the ftrueck fork; close to AC200M) -------------------
+
+const buildAC200L: Builder = () => {
+    const s = new DeviceStruct();
+    s.addString('device_type', 10, 6);
+    s.addSerialNumber('serial_number', 17);
+    s.addVersion('arm_version', 23);
+    s.addVersion('dsp_version', 25);
+    s.addUint('dc_input_power', 36);
+    s.addUint('ac_input_power', 37);
+    s.addUint('ac_output_power', 38);
+    s.addUint('dc_output_power', 39);
+    s.addDecimal('power_generation', 41, 1);
+    s.addUint('total_battery_percent', 43);
+    s.addBool('ac_output_on', 48);
+    s.addBool('dc_output_on', 49);
+
+    s.addEnum('ac_output_mode', 70, OutputMode);
+    s.addUint('internal_ac_voltage', 71);
+    s.addDecimal('internal_current_one', 72, 1);
+    s.addDecimal('internal_power_one', 73, 1);
+    s.addDecimal('internal_ac_frequency', 74, 1);
+    s.addDecimal('internal_dc_input_voltage', 86, 1);
+    s.addDecimal('internal_dc_input_power', 87, 1);
+    s.addDecimal('internal_dc_input_current', 88, 2);
+
+    s.addUint('pack_num_max', 91);
+    s.addDecimal('total_battery_voltage', 92, 2);
+    s.addUint('pack_num', 96);
+    s.addDecimal('pack_voltage', 98, 2);
+    s.addUint('pack_battery_percent', 99);
+    s.addDecimalArray('cell_voltages', 105, 16, 2);
+
+    s.addUint('pack_num', 3006);
+    s.addBool('ac_output_on', 3007);
+    s.addBool('dc_output_on', 3008);
+    s.addBool('power_off', 3060);
+    s.addEnum('auto_sleep_mode', 3061, AutoSleepMode);
+
+    s.markWritable([[3000, 3062]]);
+    return {
+        type: 'AC200L',
+        packNumMax: 3,
+        struct: s,
+        pollingCommands: [
+            new ReadHoldingRegisters(10, 40),
+            new ReadHoldingRegisters(70, 21),
+            new ReadHoldingRegisters(3001, 61),
+        ],
+        packPollingCommands: [new ReadHoldingRegisters(91, 37)],
+    };
+};
+
+// --- AC180 (ported from the semitop7 fork; experimental, 100-range layout) -----
+
+const buildAC180: Builder = () => {
+    const s = new DeviceStruct();
+    s.addUint('total_battery_percent', 102);
+    s.addUint('output_mode', 123); // bitfield: 32 both off, 40 AC on, 48 DC on, 56 both
+    s.addUint('dc_output_power', 140);
+    s.addUint('ac_output_power', 142);
+    s.addUint('dc_input_power', 144);
+    s.addUint('ac_input_power', 146);
+    // The following live outside the polling range and are logging-only.
+    s.addSwapString('device_type', 1101, 6);
+    s.addSerialNumber('serial_number', 1107);
+    s.addDecimal('power_generation', 1202, 1);
+    s.addSwapString('battery_type', 6101, 6);
+    s.addSerialNumber('battery_serial_number', 6107);
+    s.addVersion('bcu_version', 6175);
+
+    return {
+        type: 'AC180',
+        packNumMax: 1,
+        struct: s,
+        pollingCommands: [new ReadHoldingRegisters(100, 62)],
+        packPollingCommands: [],
+    };
+};
+
+// --- AC70 / AC2A (ported from semitop7/ftrueck forks; shared layout) -----------
+
+const buildAc70Style = (type: string): DeviceDefinition => {
+    const s = new DeviceStruct();
+    // Core (100)
+    s.addUint('total_battery_percent', 102);
+    s.addDecimal('estimated_time_hr', 104, 1);
+    s.addSwapString('device_type', 110, 6);
+    s.addSerialNumber('serial_number', 116);
+    s.addUint('dc_output_power', 140);
+    s.addUint('ac_output_power', 142);
+    s.addUint('dc_input_power', 144);
+    s.addUint('ac_input_power', 146);
+    // Input details (1100-1300)
+    s.addSwapString('device_type', 1101, 6);
+    s.addSerialNumber('serial_number', 1107);
+    s.addUint('num_packs_connected', 1209);
+    s.addBool('charging_from_internal_dc', 1210);
+    s.addUint('internal_dc_input_power', 1212);
+    s.addDecimal('internal_dc_input_voltage', 1213, 1);
+    s.addDecimal('internal_dc_input_current', 1214, 1);
+    s.addBool('charging_from_pack_dc', 1218);
+    s.addUint('pack_dc_input_power', 1220);
+    s.addDecimal('pack_dc_input_voltage', 1221, 1);
+    s.addDecimal('pack_dc_input_current', 1222, 1);
+    s.addDecimal('ac_input_frequency', 1300, 1);
+    s.addUint('internal_ac_input_power', 1313);
+    s.addDecimal('ac_input_voltage', 1314, 1);
+    s.addDecimal('ac_input_current', 1315, 1);
+    // Output details (1400-1500)
+    s.addUint('total_dc_output_power', 1400);
+    s.addUint('dc_usb_output_power', 1404);
+    s.addUint('dc_12v_output_power', 1406);
+    s.addUint('dc_output_uptime_minutes', 1410);
+    s.addUint('ac_output_uptime_minutes', 1424);
+    s.addDecimal('ac_output_frequency', 1500, 1);
+    s.addBool('ac_output_on', 1509);
+    s.addUint('battery_inputoutput_power', 1510);
+    s.addDecimal('ac_output_voltage', 1511, 1);
+    s.addDecimal('ac_output_amps', 1512, 1);
+    // Controls (2000)
+    s.addBool('ac_output_on', 2011);
+    s.addBool('dc_output_on', 2012);
+    s.addBool('dc_eco_on', 2014);
+    s.addUint('dc_eco_hours', 2015);
+    s.addUint('dc_eco_watts', 2016);
+    s.addBool('ac_eco_on', 2017);
+    s.addUint('ac_eco_hours', 2018);
+    s.addUint('ac_eco_watts', 2019);
+    s.addEnum('charging_mode', 2020, ChargingMode);
+    s.addBool('power_lifting_on', 2021);
+    // More controls (2200) - 2225 is read-only (outside writable range)
+    s.addBool('grid_enhancement_mode_on', 2225);
+    // Battery data (6000/6100)
+    s.addDecimal('total_battery_voltage', 6003, 2);
+    s.addSwapString('battery_type', 6101, 6);
+    s.addSerialNumber('pack_serial_number', 6107);
+    s.addDecimal('pack_voltage', 6111, 2);
+    s.addUint('pack_battery_percent', 6113);
+    s.addVersion('bcu_version', 6175);
+
+    s.markWritable([[2000, 2225]]);
+    return {
+        type,
+        packNumMax: 1,
+        struct: s,
+        pollingCommands: [
+            new ReadHoldingRegisters(100, 50),
+            new ReadHoldingRegisters(1100, 51),
+            new ReadHoldingRegisters(1200, 90),
+            new ReadHoldingRegisters(1300, 31),
+            new ReadHoldingRegisters(1400, 48),
+            new ReadHoldingRegisters(1500, 30),
+            new ReadHoldingRegisters(2000, 67),
+            new ReadHoldingRegisters(2200, 29),
+            new ReadHoldingRegisters(6000, 31),
+            new ReadHoldingRegisters(6100, 100),
+            new ReadHoldingRegisters(6300, 52),
+        ],
+        packPollingCommands: [],
+    };
+};
+
 // --- Registry + detection -----------------------------------------------------
 
 const BUILDERS: Record<string, Builder> = {
@@ -276,15 +444,28 @@ const BUILDERS: Record<string, Builder> = {
     EP500P: () => buildAcEp({ type: 'EP500P', packNumMax: 1, ep500Battery: true }),
     EP600: () => buildAc60Ep600({ type: 'EP600', extended: true }),
     EB3A: buildEB3A,
+    AC200L: buildAC200L,
+    AC180: buildAC180,
+    AC70: () => buildAc70Style('AC70'),
+    AC2A: () => buildAc70Style('AC2A'),
+    AC240: () => buildAcEp({ type: 'AC240', packNumMax: 6, gridChargeCurrent: true }),
 };
 
-/** Supported device type prefixes, longest first so EP500P matches before EP500. */
-export const SUPPORTED_TYPES = ['AC200M', 'AC300', 'AC500', 'AC60', 'EP500P', 'EP500', 'EP600', 'EB3A'];
+/** Supported device types (canonical builder keys). */
+export const SUPPORTED_TYPES = Object.keys(BUILDERS);
+
+/** Advertised-name variants that map to a canonical builder type. */
+const TYPE_ALIASES: Record<string, string> = {
+    AC200PL: 'AC200L',
+    AC180P: 'AC180',
+    AC70P: 'AC70',
+};
 
 // Tolerate leading/trailing non-word characters that some firmware adds around
-// the advertised name (e.g. "\x00AC300123\x00"). Longest prefixes first so
+// the advertised name (e.g. "\x00AC300123\x00"). Longest literals first so e.g.
 // EP500P matches before EP500.
-const DEVICE_NAME_RE = /^[^\w]*(AC200M|AC300|AC500|AC60|EP500P|EP500|EP600|EB3A)(\d+)[^\w]*$/;
+const DEVICE_NAME_RE =
+    /^[^\w]*(AC200PL|AC200M|AC200L|AC300|AC500|AC240|AC2A|AC180P|AC180|AC70P|AC70|AC60|EP500P|EP500|EP600|EB3A)(\d+)[^\w]*$/;
 
 export interface DetectedDevice {
     type: string;
@@ -301,7 +482,8 @@ export function detectFromName(name: string): DetectedDevice | undefined {
     if (!match) {
         return undefined;
     }
-    return { type: match[1], serial: match[2] };
+    const raw = match[1];
+    return { type: TYPE_ALIASES[raw] ?? raw, serial: match[2] };
 }
 
 export function buildDevice(type: string): DeviceDefinition | undefined {

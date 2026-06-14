@@ -19,7 +19,11 @@ into ioBroker so no extra Python service or MQTT broker is required.
 
 ### Supported devices
 
-`AC200M`, `AC300`, `AC500`, `AC60`, `EP500`, `EP500P`, `EP600`, `EB3A`.
+`AC200M`, `AC200L`, `AC300`, `AC500`, `AC240`, `AC60`, `EP500`, `EP500P`,
+`EP600`, `EB3A`.
+
+Experimental (register maps ported from community forks, not verified on real
+hardware): `AC180`, `AC2A`, `AC70`.
 
 One adapter instance talks to one device.
 
