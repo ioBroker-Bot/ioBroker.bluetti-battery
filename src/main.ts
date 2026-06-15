@@ -15,15 +15,11 @@ const PACK_SELECT_REGISTER = 3006;
 /** Time to wait after switching packs before the new pack data is readable. */
 const PACK_SWITCH_DELAY_MS = 3000;
 
-function delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 class BluettiBattery extends utils.Adapter {
     private client?: BluetoothClient;
     private device?: DeviceDefinition;
-    private pollTimer?: ReturnType<typeof setTimeout>;
-    private reconnectTimer?: ReturnType<typeof setTimeout>;
+    private pollTimer?: ioBroker.Timeout;
+    private reconnectTimer?: ioBroker.Timeout;
     private polling = false;
     private stopping = false;
     /** Register start addresses already warned about (avoid log spam). */
@@ -64,7 +60,10 @@ class BluettiBattery extends utils.Adapter {
         if (this.stopping) {
             return;
         }
-        this.client = new BluetoothClient(mac, this.log, () => this.handleDisconnect(mac));
+        this.client = new BluetoothClient(mac, this.log, () => this.handleDisconnect(mac), {
+            setTimeout: (cb, ms) => this.setTimeout(cb, ms),
+            clearTimeout: handle => this.clearTimeout(handle),
+        });
         try {
             await this.client.connect();
         } catch (err) {
@@ -136,23 +135,23 @@ class BluettiBattery extends utils.Adapter {
         this.scheduleReconnect(mac, 5000);
     }
 
-    private scheduleReconnect(mac: string, delay: number): void {
+    private scheduleReconnect(mac: string, delayMs: number): void {
         if (this.stopping) {
             return;
         }
         this.clearTimers();
-        this.reconnectTimer = setTimeout(() => {
+        this.reconnectTimer = this.setTimeout(() => {
             void this.connectLoop(mac);
-        }, delay);
+        }, delayMs);
     }
 
     private clearTimers(): void {
         if (this.pollTimer) {
-            clearTimeout(this.pollTimer);
+            this.clearTimeout(this.pollTimer);
             this.pollTimer = undefined;
         }
         if (this.reconnectTimer) {
-            clearTimeout(this.reconnectTimer);
+            this.clearTimeout(this.reconnectTimer);
             this.reconnectTimer = undefined;
         }
     }
@@ -202,7 +201,7 @@ class BluettiBattery extends utils.Adapter {
         }
 
         if (!this.stopping) {
-            this.pollTimer = setTimeout(() => void this.poll(), this.config.pollInterval * 1000);
+            this.pollTimer = this.setTimeout(() => void this.poll(), this.config.pollInterval * 1000);
         }
     }
 
@@ -218,7 +217,7 @@ class BluettiBattery extends utils.Adapter {
                 // not a failure. Then wait for the pack data to switch.
                 if (this.device.packNumMax > 1) {
                     await this.selectPack(pack);
-                    await delay(PACK_SWITCH_DELAY_MS);
+                    await this.delay(PACK_SWITCH_DELAY_MS);
                 }
 
                 const parsed: Record<string, FieldValue> = {};

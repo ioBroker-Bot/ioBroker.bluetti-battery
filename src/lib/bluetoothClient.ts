@@ -21,11 +21,17 @@ export interface ClientLogger {
     error(msg: string): void;
 }
 
+/** Adapter-backed timers so all timeouts are cleaned up on unload. */
+export interface AdapterTimers {
+    setTimeout: (cb: () => void, ms: number) => ioBroker.Timeout | undefined;
+    clearTimeout: (handle: ioBroker.Timeout | undefined) => void;
+}
+
 interface PendingCommand {
     command: DeviceCommand;
     resolve: (body: Buffer) => void;
     reject: (err: Error) => void;
-    timer: ReturnType<typeof setTimeout>;
+    timer: ioBroker.Timeout | undefined;
 }
 
 /**
@@ -55,7 +61,14 @@ export class BluetoothClient {
         private readonly address: string,
         private readonly log: ClientLogger,
         private readonly onDisconnect: () => void,
+        private readonly timers: AdapterTimers,
     ) {}
+
+    private delayMs(ms: number): Promise<void> {
+        return new Promise(resolve => {
+            this.timers.setTimeout(resolve, ms);
+        });
+    }
 
     get connected(): boolean {
         return !!this.device && !!this.writeChar && !!this.notifyChar && !!this.connection && !this.closed;
@@ -115,7 +128,7 @@ export class BluetoothClient {
             this.log.info('Performing encrypted handshake...');
             await Promise.race([
                 this.connection.waitUntilReady(),
-                delay(HANDSHAKE_TIMEOUT_MS).then(() => {
+                this.delayMs(HANDSHAKE_TIMEOUT_MS).then(() => {
                     throw new Error('encryption handshake timed out');
                 }),
             ]);
@@ -165,7 +178,7 @@ export class BluetoothClient {
                     throw lastError;
                 }
                 this.log.debug(`Command failed (${lastError.message}), retry ${attempt + 1}/${MAX_RETRIES}`);
-                await delay(RETRY_DELAY_MS);
+                await this.delayMs(RETRY_DELAY_MS);
             }
         }
         throw lastError;
@@ -179,7 +192,7 @@ export class BluetoothClient {
                 return;
             }
             this.notifyBuffer = Buffer.alloc(0);
-            const timer = setTimeout(() => {
+            const timer = this.timers.setTimeout(() => {
                 if (this.pending?.timer === timer) {
                     this.pending = undefined;
                 }
@@ -191,7 +204,7 @@ export class BluetoothClient {
             // encrypts the frame first for v2 devices.
             this.connection.write(command.frame).catch((err: Error) => {
                 if (this.pending?.timer === timer) {
-                    clearTimeout(timer);
+                    this.timers.clearTimeout(timer);
                     this.pending = undefined;
                 }
                 reject(err);
@@ -202,7 +215,7 @@ export class BluetoothClient {
     async disconnect(): Promise<void> {
         this.closed = true;
         if (this.pending) {
-            clearTimeout(this.pending.timer);
+            this.timers.clearTimeout(this.pending.timer);
             this.pending.reject(new Error('disconnecting'));
             this.pending = undefined;
         }
@@ -250,7 +263,7 @@ export class BluetoothClient {
         if (!pending) {
             return;
         }
-        clearTimeout(pending.timer);
+        this.timers.clearTimeout(pending.timer);
         this.pending = undefined;
         pending.reject(err);
     }
@@ -274,7 +287,7 @@ export class BluetoothClient {
 
         if (this.notifyBuffer.length === cmd.responseSize()) {
             if (cmd.isValidResponse(this.notifyBuffer)) {
-                clearTimeout(pending.timer);
+                this.timers.clearTimeout(pending.timer);
                 this.pending = undefined;
                 pending.resolve(cmd.parseResponse(this.notifyBuffer));
             } else {
@@ -316,8 +329,4 @@ export class ModbusError extends Error {
 function retryable(err: Error): RetryError {
     (err as RetryError).retryable = true;
     return err;
-}
-
-function delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
 }
