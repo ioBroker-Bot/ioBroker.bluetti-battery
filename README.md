@@ -10,6 +10,12 @@
 
 **Tests:** ![Test and Release](https://github.com/Garfonso/ioBroker.bluetti-battery/workflows/Test%20and%20Release/badge.svg)
 
+> **Disclaimer:** This is an independent, community-developed adapter. It is
+> **not** affiliated with, endorsed by, or supported by Bluetti / PowerOak.
+> "Bluetti" and all related names and logos are trademarks of their respective
+> owners and are used here only to describe device compatibility. Use at your
+> own risk — the authors are not responsible for any damage to your devices.
+
 ## bluetti-battery adapter for ioBroker
 
 Monitor and control Bluetti power stations / batteries over Bluetooth Low Energy

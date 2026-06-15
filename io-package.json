@@ -63,7 +63,8 @@
 		"mode": "daemon",
 		"type": "energy",
 		"messagebox": true,
-		"compact": true,
+		"compact": false,
+		"os": ["linux"],
 		"connectionType": "local",
 		"dataSource": "poll",
 		"adminUI": {
