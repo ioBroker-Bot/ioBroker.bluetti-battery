@@ -12,6 +12,15 @@
 - Use [Conventional Commits](https://www.conventionalcommits.org/) style subjects
   (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`).
 
+## Releasing
+
+- Run the ioBroker repo checker periodically and **before every release**; fix
+  all reported errors:
+  ```bash
+  npx @iobroker/repochecker@latest https://github.com/Garfonso/ioBroker.bluetti-battery/ --local
+  ```
+  It queries the GitHub API, so it needs network access and a pushed `main`.
+
 ## Code style
 
 - **Never mix `type` and value specifiers in one import statement.** The ts-node
