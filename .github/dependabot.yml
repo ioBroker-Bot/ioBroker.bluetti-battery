@@ -11,7 +11,7 @@ updates:
       - Garfonso
     versioning-strategy: increase
     cooldown:
-      default: 7
+      default-days: 7
     ignore:
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
