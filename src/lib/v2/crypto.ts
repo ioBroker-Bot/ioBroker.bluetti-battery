@@ -8,7 +8,7 @@
  * The static keys below are published in Bluetti firmware / apps - they provide
  * obfuscation, not security (the protocol is MITM-able by design).
  */
-import * as crypto from 'crypto';
+import * as crypto from 'node:crypto';
 
 /** 16-byte AES key used to obfuscate the pre-key-exchange handshake. */
 const LOCAL_AES_KEY = Buffer.from('459FC535808941F17091E0993EE3E93D', 'hex');
