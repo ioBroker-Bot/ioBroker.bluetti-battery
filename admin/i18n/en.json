@@ -1,5 +1,12 @@
 {
 	"bluetti-battery adapter settings": "Adapter settings for bluetti-battery",
-	"option1": "option1",
-	"option2": "option2"
+	"MAC address": "MAC address",
+	"Bluetooth MAC address of the device, e.g. AA:BB:CC:DD:EE:FF": "Bluetooth MAC address of the device, e.g. AA:BB:CC:DD:EE:FF",
+	"Device type": "Device type",
+	"Leave on auto to detect from the advertised Bluetooth name": "Leave on auto to detect from the advertised Bluetooth name",
+	"Polling interval (s)": "Polling interval (s)",
+	"Poll per-pack battery data": "Poll per-pack battery data",
+	"Reads cell voltages and per-pack details (slower)": "Reads cell voltages and per-pack details (slower)",
+	"Encryption (v2 devices)": "Encryption (v2 devices)",
+	"auto follows the device profile; force on/off for newer encrypted units": "auto follows the device profile; force on/off for newer encrypted units"
 }

@@ -35,7 +35,7 @@ body:
     id: profile
     attributes:
       label: Device profile used
-      description: From the log line `Using device profile: ...`.
+      description: "From the log line `Using device profile: ...`."
       options:
         - AC200M
         - AC200L
