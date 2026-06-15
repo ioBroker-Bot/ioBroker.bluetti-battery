@@ -107,21 +107,6 @@ setting in the app, `scanRange` again, and look for the register whose value
 matches the new setting. Then `writeRegister` to confirm it controls the
 setting before it gets a named state.
 
-## For maintainers
-
-### Repository checker
-
-Run the official ioBroker repository checker from time to time, and especially
-before every release, to catch packaging / metadata issues:
-
-```bash
-npx @iobroker/repochecker@latest https://github.com/Garfonso/ioBroker.bluetti-battery/ --local
-```
-
-`--local` checks the working copy. The checker also queries the GitHub API, so
-it needs network access and a pushed `main` branch. Fix every reported error
-before releasing.
-
 ## Changelog
 <!--
 	Placeholder for the next version (at the beginning of the line):
@@ -133,6 +118,8 @@ before releasing.
 * (Garfonso/Claude) make modbus polling more robust.
 * (Garfonso/Claude) add experimental support for encrypted (v2) devices
 * (Garfonso/Claude) initial release
+
+[Older changelogs can be found there](CHANGELOG_OLD.md)
 
 ## License
 MIT License
