@@ -14,6 +14,8 @@ const MAC_RE = /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/i;
 const PACK_SELECT_REGISTER = 3006;
 /** Time to wait after switching packs before the new pack data is readable. */
 const PACK_SWITCH_DELAY_MS = 3000;
+/** Consecutive failed poll cycles tolerated before info.connection drops to false. */
+const POLL_FAILURES_BEFORE_DISCONNECT = 3;
 
 class BluettiBattery extends utils.Adapter {
     private client?: BluetoothClient;
@@ -22,6 +24,8 @@ class BluettiBattery extends utils.Adapter {
     private reconnectTimer?: ioBroker.Timeout;
     private polling = false;
     private stopping = false;
+    /** Consecutive failed poll cycles (transient BLE errors), for info.connection. */
+    private pollFailures = 0;
     /** Register start addresses already warned about (avoid log spam). */
     private readonly modbusWarned = new Set<number>();
     /** Pack numbers whose objects have been created. */
@@ -96,6 +100,7 @@ class BluettiBattery extends utils.Adapter {
         }
 
         await this.createObjects(device);
+        this.pollFailures = 0;
         await this.setState('info.connection', { val: true, ack: true });
         await this.poll();
     }
@@ -130,6 +135,7 @@ class BluettiBattery extends utils.Adapter {
         if (this.stopping) {
             return;
         }
+        this.pollFailures = 0;
         void this.setState('info.connection', { val: false, ack: true });
         this.clearTimers();
         this.scheduleReconnect(mac, 5000);
@@ -192,10 +198,19 @@ class BluettiBattery extends utils.Adapter {
                 await this.pollPacks();
             }
 
+            this.pollFailures = 0;
             await this.setState('info.connection', { val: true, ack: true });
         } catch (err) {
-            this.log.warn(`Polling failed: ${(err as Error).message}`);
-            await this.setState('info.connection', { val: false, ack: true });
+            // A single command failing (BLE timeout / corrupt frame) does not mean
+            // the link is down. Only report disconnected after several consecutive
+            // failed cycles, or immediately if the BLE link actually dropped.
+            this.pollFailures++;
+            const linkDown = !this.client?.connected;
+            const level = linkDown || this.pollFailures >= POLL_FAILURES_BEFORE_DISCONNECT ? 'warn' : 'debug';
+            this.log[level](`Polling failed (${this.pollFailures}x): ${(err as Error).message}`);
+            if (linkDown || this.pollFailures >= POLL_FAILURES_BEFORE_DISCONNECT) {
+                await this.setState('info.connection', { val: false, ack: true });
+            }
         } finally {
             this.polling = false;
         }

@@ -11,7 +11,7 @@ const NOTIFY_UUID = '0000ff01-0000-1000-8000-00805f9b34fb';
 const RESPONSE_TIMEOUT_MS = 5000;
 const CONNECT_TIMEOUT_MS = 30000;
 const HANDSHAKE_TIMEOUT_MS = 15000;
-const MAX_RETRIES = 5;
+const MAX_ATTEMPTS = 5;
 const RETRY_DELAY_MS = 200;
 
 export interface ClientLogger {
@@ -163,10 +163,10 @@ export class BluetoothClient {
         });
     }
 
-    /** Run a single command, retrying transient failures up to MAX_RETRIES. */
+    /** Run a single command, retrying transient failures up to MAX_ATTEMPTS times. */
     private async attemptWithRetries(command: DeviceCommand): Promise<Buffer> {
         let lastError: RetryError = new Error('command failed');
-        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             if (this.closed || !this.writeChar) {
                 throw new Error('not connected');
             }
@@ -174,10 +174,10 @@ export class BluetoothClient {
                 return await this.singleAttempt(command);
             } catch (err) {
                 lastError = err as RetryError;
-                if (!lastError.retryable) {
+                if (!lastError.retryable || attempt === MAX_ATTEMPTS) {
                     throw lastError;
                 }
-                this.log.debug(`Command failed (${lastError.message}), retry ${attempt + 1}/${MAX_RETRIES}`);
+                this.log.debug(`Command failed (${lastError.message}), attempt ${attempt}/${MAX_ATTEMPTS}`);
                 await this.delayMs(RETRY_DELAY_MS);
             }
         }
