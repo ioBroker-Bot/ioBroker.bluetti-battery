@@ -43,7 +43,7 @@ const NAME_MAP: Record<string, string> = {
     pack_current: 'total_battery_current',
 };
 
-export function buildV2Device(): DeviceDefinition {
+export function buildV2Device(type = 'V2'): DeviceDefinition {
     const s = new DeviceStruct(1); // byte-addressed
 
     // Setters (bitfield status is read separately via ctrl_status).
@@ -134,7 +134,7 @@ export function buildV2Device(): DeviceDefinition {
     s.markWritable([[AC_SWITCH, DC_SWITCH + 1]]);
 
     return {
-        type: 'V2',
+        type,
         packNumMax: 1,
         struct: s,
         encrypted: true,

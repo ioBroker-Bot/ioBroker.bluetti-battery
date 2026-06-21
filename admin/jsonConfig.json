@@ -33,7 +33,7 @@
 				{ "label": "EP500P", "value": "EP500P" },
 				{ "label": "EP600", "value": "EP600" },
 				{ "label": "EB3A", "value": "EB3A" },
-				{ "label": "Apex 300 (experimental)", "value": "V2" },
+				{ "label": "Apex 300 (experimental)", "value": "APEX300" },
 				{ "label": "V2 / encrypted (experimental)", "value": "V2" }
 			],
 			"default": "auto",

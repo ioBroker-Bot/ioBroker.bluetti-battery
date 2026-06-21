@@ -460,7 +460,8 @@ const BUILDERS: Record<string, Builder> = {
     AC70: () => buildAc70Style('AC70'),
     AC2A: () => buildAc70Style('AC2A'),
     AC240: () => buildAcEp({ type: 'AC240', packNumMax: 6, gridChargeCurrent: true }),
-    V2: buildV2Device,
+    V2: () => buildV2Device(),
+    APEX300: () => buildV2Device('APEX300'),
 };
 
 /** Supported device types (canonical builder keys). */
@@ -471,9 +472,6 @@ const TYPE_ALIASES: Record<string, string> = {
     AC200PL: 'AC200L',
     AC180P: 'AC180',
     AC70P: 'AC70',
-    // Apex 300 is a v2 (encrypted) device. The generic V2 profile decodes the
-    // common values; Apex-specific registers still need mapping. EXPERIMENTAL.
-    APEX300: 'V2',
 };
 
 // Tolerate leading/trailing non-word characters that some firmware adds around
