@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "bluetti-battery",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "news": {
+      "0.1.1": {
+        "en": "add very experimental support for APEX 300.",
+        "de": "Fügt experimentelle Unterstützung für APEX 300 hinzu.",
+        "ru": "Добавлена экспериментальная поддержка APEX 300.",
+        "pt": "Adicionada uma versão experimental do suporte para o APEX 300.",
+        "nl": "Voeg zeer experimentele ondersteuning toe voor APEX 300.",
+        "fr": "Ajout d'une prise en charge très expérimentale pour APEX 300.",
+        "it": "Aggiungere un supporto ancora in fase sperimentale per APEX 300.",
+        "es": "Se añade soporte muy experimental para APEX 300.",
+        "pl": "dodano bardzo eksperymentalne wsparcie dla APEX 300.",
+        "uk": "додати дуже експериментальну підтримку для APEX 300.",
+        "zh-cn": "为 APEX 300 添加非常实验性的支持。"
+      },
       "0.1.0": {
         "en": "tolerate issues in BLE connection better.\nadd support for reverse engineering modbus registers via sendTo commands\nmake modbus polling more robust.\nadd experimental support for encrypted (v2) devices\ninitial release",
         "de": "Probleme mit der BLE-Verbindung besser tolerieren.\nUnterstützung für Reverse Engineering von Modbus-Registern über sendTo-Befehle hinzufügen\nDas Modbus-Polling robuster gestalten.\nExperimentelle Unterstützung für verschlüsselte (v2) Geräte hinzufügen\nErstveröffentlichung",

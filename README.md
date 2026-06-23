@@ -118,8 +118,8 @@ setting before it gets a named state.
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
-* (Garfonso/Claude) added: very experimental support for APEX 300.
+### 0.1.1 (2026-06-23)
+* (Garfonso/Claude) add very experimental support for APEX 300.
 
 ### 0.1.0 (2026-06-19)
 * (Garfonso/Claude) tolerate issues in BLE connection better.
