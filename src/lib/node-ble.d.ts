@@ -3,7 +3,7 @@
  * Only the surface used by this adapter is declared.
  */
 declare module 'node-ble' {
-    import type { EventEmitter } from 'events';
+    import type { EventEmitter } from 'node:events';
 
     export interface GattCharacteristic extends EventEmitter {
         writeValue(
