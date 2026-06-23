@@ -118,6 +118,9 @@ setting before it gets a named state.
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+* (Garfonso/Claude) add very experimental support for APEX 300.
+
 ### 0.1.0 (2026-06-19)
 * (Garfonso/Claude) tolerate issues in BLE connection better.
 * (Garfonso/Claude) add support for reverse engineering modbus registers via sendTo commands

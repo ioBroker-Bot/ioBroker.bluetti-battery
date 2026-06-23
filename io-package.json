@@ -15,19 +15,6 @@
         "pl": "lepiej znoszą problemy z połączeniem BLE.\ndodaj obsługę inżynierii wstecznej rejestrów Modbus za pomocą poleceń sendTo\nuczynić sondowanie modbus bardziej niezawodnym.\ndodaj eksperymentalną obsługę urządzeń szyfrowanych (v2)\nwydanie początkowe",
         "uk": "краще переносять проблеми з BLE-з'єднанням.\nдодати підтримку зворотного проектування регістрів Modbus за допомогою команд sendTo\nзробити опитування Modbus більш надійним.\nдодати експериментальну підтримку для зашифрованих пристроїв (v2)\nпочатковий випуск",
         "zh-cn": "对蓝牙低功耗连接问题的容忍度更高。\n添加对通过 sendTo 命令进行 Modbus 寄存器逆向工程的支持\n增强 Modbus 轮询的稳定性。\n增加对加密（v2）设备的实验性支持\n初始版本"
-      },
-      "0.0.1": {
-        "en": "initial release",
-        "de": "Erstveröffentlichung",
-        "ru": "Начальная версия",
-        "pt": "lançamento inicial",
-        "nl": "Eerste uitgave",
-        "fr": "Première version",
-        "it": "Versione iniziale",
-        "es": "Versión inicial",
-        "pl": "Pierwsze wydanie",
-        "uk": "Початкова версія",
-        "zh-cn": "首次出版"
       }
     },
     "titleLang": {
